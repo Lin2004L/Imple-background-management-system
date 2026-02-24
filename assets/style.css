@@ -1,0 +1,376 @@
+/* 重置和基础样式 */
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  background:linear-gradient(135deg, #f8fafc 0%, #f1f5f9 25%, #e2e8f0 100%); /* 改为浅色渐变背景 */
+  color:#1e293b; /* 深色文字提高可读性 */
+  line-height:1.5;
+}
+a{text-decoration:none;color:inherit}
+button{cursor:pointer}
+input,select,button{font:inherit;outline:none}
+
+/* 布局网格 */
+.layout{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  grid-template-rows:64px 1fr;
+  height:100vh;
+  background:rgba(255,255,255,0.9); /* 添加半透明白色层增强清晰度 */
+}
+
+/* 侧边栏 - 改为浅色卡片效果 */
+.sidebar{
+  grid-row:1/3;
+  background:linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-right:1px solid #cbd5e1; /* 浅灰色边框 */
+  box-shadow:2px 0 8px rgba(0,0,0,0.05);
+}
+.sidebar .brand{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:20px 16px;
+  font-weight:600;
+  font-size:18px;
+  color:#1e40af; /* 深蓝色品牌文字 */
+  border-bottom:1px solid #cbd5e1;
+}
+.sidebar .brand::before{
+  content:"•";
+  color:#3b82f6; /* 蓝色点缀 */
+  font-size:24px;
+  line-height:1;
+}
+
+/* 导航 - 增强可读性和交互反馈 */
+.nav{
+  display:flex;
+  flex-direction:column;
+  padding:12px 8px;
+}
+.nav a{
+  padding:12px 16px;
+  border-radius:8px;
+  color:#475569; /* 中灰色文字 */
+  margin:4px 0;
+  transition:all 0.2s ease;
+  font-weight:500;
+}
+.nav a:hover{
+  background:#f1f5f9; /* 浅灰悬停背景 */
+  color:#1e40af; /* 悬停时变蓝色 */
+  transform:translateX(2px);
+}
+.nav a.router-link-active{
+  background:#3b82f6; /* 蓝色激活背景 */
+  color:#ffffff; /* 白色激活文字 */
+  box-shadow:0 4px 12px rgba(59,130,246,0.3);
+}
+.nav a.router-link-active:hover{
+  background:#2563eb;
+}
+
+/* 顶部栏 - 改为白色半透明毛玻璃效果 */
+.topbar{
+  grid-column:2;
+  background:rgba(255,255,255,0.95);
+  border-bottom:1px solid #cbd5e1;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 20px;
+  backdrop-filter:blur(10px);
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+.topbar .space-between{
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+/* 主内容区 */
+.content{
+  grid-column:2;
+  padding:24px;
+  overflow:auto;
+  background:#f8fafc; /* 浅灰内容背景 */
+}
+
+/* 卡片网格 - 增强视觉层次 */
+.cards{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:20px;
+  margin:20px 0;
+}
+.card{
+  background:#ffffff; /* 白色卡片 */
+  border:1px solid #cbd5e1; /* 浅灰边框 */
+  border-radius:12px;
+  padding:20px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.05);
+  transition:transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 20px rgba(0,0,0,0.08);
+}
+.card h2,.card h3{
+  color:#1e293b; /* 深色标题 */
+  margin:0 0 12px 0;
+  font-weight:600;
+}
+.card .stat{
+  font-size:32px;
+  font-weight:700;
+  color:#1e40af; /* 蓝色统计数据 */
+  margin:8px 0;
+}
+.card .label{
+  color:#64748b; /* 灰色标签文字 */
+  font-size:14px;
+  text-transform:uppercase;
+  letter-spacing:0.5px;
+}
+
+/* 表格 - 改为浅色交替行，增强可读性 */
+.table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  background:#ffffff;
+  border:1px solid #cbd5e1;
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+.table th{
+  background:#f8fafc; /* 浅灰表头 */
+  color:#64748b; /* 灰色表头文字 */
+  padding:16px;
+  border-bottom:2px solid #cbd5e1;
+  font-weight:600;
+  text-transform:uppercase;
+  font-size:12px;
+  letter-spacing:0.5px;
+  text-align:left;
+}
+.table td{
+  padding:16px;
+  border-bottom:1px solid #e2e8f0; /* 更浅的分隔线 */
+  color:#1e293b; /* 深色表格文字 */
+  font-size:14px;
+}
+.table tbody tr:last-child td{
+  border-bottom:none;
+}
+.table tbody tr:nth-child(even){
+  background:#f8fafc; /* 交替行背景 */
+}
+.table tbody tr:hover{
+  background:#f1f5f9; /* 悬停行背景 */
+}
+
+/* 工具栏和表单 */
+.toolbar{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  margin-bottom:20px;
+  padding:16px;
+  background:#ffffff;
+  border:1px solid #cbd5e1;
+  border-radius:12px;
+}
+.form{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;
+  background:#ffffff;
+  border:1px solid #cbd5e1;
+  border-radius:12px;
+  padding:20px;
+  margin-bottom:20px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+.form .full{
+  grid-column:1/-1;
+  text-align:right;
+}
+
+/* 输入框 - 增强焦点状态和可读性 */
+.input{
+  background:#ffffff;
+  border:2px solid #cbd5e1; /* 加粗边框提高可见性 */
+  border-radius:8px;
+  padding:10px 12px;
+  color:#1e293b; /* 深色输入文字 */
+  transition:all 0.2s ease;
+  font-size:14px;
+  width:100%;
+}
+.input:focus{
+  border-color:#3b82f6; /* 蓝色焦点边框 */
+  box-shadow:0 0 0 3px rgba(59,130,246,0.1);
+  background:#ffffff;
+}
+.input::placeholder{
+  color:#94a3b8; /* 灰色占位符 */
+  opacity:0.7;
+}
+select.input{
+  appearance:none;
+  background:#ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 12px center;
+  padding-right:40px;
+}
+
+/* 按钮 - 增强视觉层次和交互反馈 */
+.btn{
+  background:linear-gradient(180deg, #3b82f6 0%, #2563eb 100%); /* 蓝色渐变按钮 */
+  border:0;
+  color:#ffffff;
+  border-radius:8px;
+  padding:10px 20px;
+  font-weight:500;
+  font-size:14px;
+  cursor:pointer;
+  transition:all 0.2s ease;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  box-shadow:0 2px 6px rgba(59,130,246,0.3);
+}
+.btn:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 12px rgba(59,130,246,0.4);
+  background:linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
+}
+.btn:active{
+  transform:translateY(0);
+  box-shadow:0 1px 3px rgba(59,130,246,0.3);
+}
+.btn.secondary{
+  background:#ffffff;
+  color:#475569;
+  border:1px solid #cbd5e1;
+  box-shadow:0 1px 3px rgba(0,0,0,0.05);
+}
+.btn.secondary:hover{
+  background:#f8fafc;
+  border-color:#94a3b8;
+  box-shadow:0 2px 6px rgba(0,0,0,0.08);
+}
+.btn.danger{
+  background:linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  box-shadow:0 2px 6px rgba(239,68,68,0.3);
+}
+.btn.danger:hover{
+  background:linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+}
+.btn.success{
+  background:linear-gradient(180deg, #10b981 0%, #059669 100%);
+  box-shadow:0 2px 6px rgba(16,185,129,0.3);
+}
+.btn.success:hover{
+  background:linear-gradient(180deg, #059669 0%, #047857 100%);
+}
+.btn.warn{
+  background:linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  box-shadow:0 2px 6px rgba(245,158,11,0.3);
+}
+
+/* 标签样式 */
+.pill{
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:12px;
+  display:inline-block;
+  font-weight:500;
+  letter-spacing:0.3px;
+  border:1px solid transparent;
+}
+.pill.green{
+  background:#d1fae5; /* 浅绿背景 */
+  color:#065f46; /* 深绿文字 */
+  border-color:#a7f3d0;
+}
+.pill.gray{
+  background:#f1f5f9; /* 浅灰背景 */
+  color:#475569; /* 深灰文字 */
+  border-color:#cbd5e1;
+}
+.pill.blue{
+  background:#dbeafe; /* 浅蓝背景 */
+  color:#1e40af; /* 深蓝文字 */
+  border-color:#bfdbfe;
+}
+
+/* 工具类 */
+.space-between{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  width:100%;
+}
+.footer{
+  margin-top:40px;
+  padding-top:20px;
+  color:#64748b; /* 灰色页脚文字 */
+  font-size:13px;
+  text-align:center;
+  border-top:1px solid #cbd5e1;
+}
+
+/* 响应式设计 */
+@media(max-width:1024px){
+  .cards{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .layout{
+    grid-template-columns:240px 1fr;
+  }
+}
+@media(max-width:768px){
+  .layout{
+    grid-template-columns:1fr;
+    grid-template-rows:60px 1fr;
+  }
+  .sidebar{
+    grid-row:unset;
+    display:none;
+  }
+  .topbar{
+    grid-column:1;
+    padding:0 16px;
+  }
+  .content{
+    grid-column:1;
+    padding:16px;
+  }
+  .cards{
+    grid-template-columns:1fr;
+  }
+  .toolbar,.form{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .btn{
+    width:100%;
+  }
+}
+@media(max-width:480px){
+  .topbar{
+    padding:0 12px;
+  }
+  .content{
+    padding:12px;
+  }
+  .table th,.table td{
+    padding:12px 8px;
+  }
+}

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简易后台管理系统</title>
+  <link rel="stylesheet" href="./assets/style.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.prod.js"></script>
+  
+</head>
+<body>
+  <!--
+    为避免直接用文件协议(file://)打开时出现模块脚本的跨域限制，
+    这里将所有应用代码内联到一个非模块脚本中，确保双击 index.html 即可运行。
+    详细注释帮助初学者理解各部分的作用。
+  -->
+  <div id="app"></div>
+  <script>
+    // ========== 全局“服务层”：模拟后端API（localStorage持久化） ==========
+    // 使用 localStorage 存储用户、产品、默认账号信息，并提供 CRUD 与统计方法
+    (function(){
+      const KEY_USERS = "demo_users";
+      const KEY_PRODUCTS = "demo_products";
+      const KEY_AUTH = "demo_auth";
+      function init() {
+        if (!localStorage.getItem(KEY_USERS)) {
+          localStorage.setItem(KEY_USERS, JSON.stringify([
+            { id: 1, name: "张三", email: "zhangsan@example.com", role: "管理员", status: "在职" },
+            { id: 2, name: "李四", email: "lisi@example.com", role: "客服", status: "在职" },
+            { id: 3, name: "王五", email: "wangwu@example.com", role: "运营", status: "离职" }
+          ]));
+        }
+        if (!localStorage.getItem(KEY_PRODUCTS)) {
+          localStorage.setItem(KEY_PRODUCTS, JSON.stringify([
+            { id: 1001, name: "基础会员", price: 99, stock: 100, status: "上架" },
+            { id: 1002, name: "高级会员", price: 199, stock: 50, status: "上架" },
+            { id: 1003, name: "专业版", price: 299, stock: 10, status: "下架" }
+          ]));
+        }
+        if (!localStorage.getItem(KEY_AUTH)) {
+          localStorage.setItem(KEY_AUTH, JSON.stringify({ username: "admin", password: "123456", name: "管理员" }));
+        }
+      }
+      function read(key){ return JSON.parse(localStorage.getItem(key) || "[]"); }
+      function write(key, value){ localStorage.setItem(key, JSON.stringify(value)); }
+      function listUsers(){ return read(KEY_USERS); }
+      function addUser(payload){
+        const users = read(KEY_USERS);
+        const id = users.length ? Math.max(...users.map(x => x.id)) + 1 : 1;
+        const u = { id, ...payload }; users.push(u); write(KEY_USERS, users); return u;
+      }
+      function updateUser(id, payload){
+        const users = read(KEY_USERS);
+        const idx = users.findIndex(x => x.id === id);
+        if (idx === -1) return null;
+        users[idx] = { ...users[idx], ...payload }; write(KEY_USERS, users); return users[idx];
+      }
+      function deleteUser(id){ write(KEY_USERS, read(KEY_USERS).filter(x => x.id !== id)); }
+      function listProducts(){ return read(KEY_PRODUCTS); }
+      function addProduct(payload){
+        const products = read(KEY_PRODUCTS);
+        const id = products.length ? Math.max(...products.map(x => x.id)) + 1 : 1000;
+        const p = { id, ...payload }; products.push(p); write(KEY_PRODUCTS, products); return p;
+      }
+      function updateProduct(id, payload){
+        const products = read(KEY_PRODUCTS);
+        const idx = products.findIndex(x => x.id === id);
+        if (idx === -1) return null;
+        products[idx] = { ...products[idx], ...payload }; write(KEY_PRODUCTS, products); return products[idx];
+      }
+      function deleteProduct(id){ write(KEY_PRODUCTS, read(KEY_PRODUCTS).filter(x => x.id !== id)); }
+      function login({ username, password }){
+        const auth = JSON.parse(localStorage.getItem(KEY_AUTH) || "{}");
+        if (auth.username === username && auth.password === password) return { name: auth.name, username };
+        return null;
+      }
+      function stats(){
+        const users = listUsers();
+        const products = listProducts();
+        const activeUsers = users.filter(x => x.status === "在职").length;
+        const onSale = products.filter(x => x.status === "上架").length;
+        const revenue = products.reduce((s, p) => s + p.price * Math.max(0, p.stock > 20 ? 20 : p.stock), 0);
+        return { users: users.length, products: products.length, activeUsers, onSale, revenue };
+      }
+      init();
+      // 暴露到全局以便各组件调用
+      window.api = { listUsers, addUser, updateUser, deleteUser, listProducts, addProduct, updateProduct, deleteProduct, login, stats };
+    })();
+
+    // ========== 全局“状态层”：存储当前登录用户等 ==========
+    (function(){
+      const currentUser = Vue.ref(null);   // 当前登录用户（null表示未登录）
+      const collapsed = Vue.ref(false);    // 侧边栏折叠示例（可扩展）
+      function login(user){ currentUser.value = user; }
+      function logout(){ currentUser.value = null; }
+      window.store = { currentUser, collapsed, login, logout };
+    })();
+
+    // ========== 基础组件：侧边栏与顶部栏 ==========
+    const Sidebar = {
+      name: "Sidebar",
+      // 简单的导航列表，使用 <router-link> 进行页面跳转
+      template: `
+        <nav class="nav">
+          <router-link to="/">📊 仪表盘</router-link>
+          <router-link to="/users">👥 用户管理</router-link>
+          <router-link to="/products">🛒 产品管理</router-link>
+          <router-link to="/settings">⚙️ 系统设置</router-link>
+        </nav>
+      `
+    };
+    const Topbar = {
+      name: "Topbar",
+      setup(){
+        const q = Vue.ref(""); // 顶部搜索输入，仅展示用
+        function logout(){ store.logout(); }
+        return { store, q, logout };
+      },
+      template: `
+        <div class="space-between" style="width:100%">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input class="input" style="width:240px" v-model="q" placeholder="搜索..." />
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <!-- 模板中会自动解包ref，这里展示当前用户名称 -->
+            <span v-if="store.currentUser" class="pill gray">{{ store.currentUser?.name || '游客' }}</span>
+            <router-link v-if="!store.currentUser" class="btn secondary" to="/login">登录</router-link>
+            <button v-else class="btn secondary" @click="logout">退出</button>
+          </div>
+        </div>
+      `
+    };
+
+    // ========== 页面：登录 ==========
+    const Login = {
+      name: "Login",
+      setup(){
+        const username = Vue.ref("");   // 账号
+        const password = Vue.ref("");   // 密码
+        const msg = Vue.ref("");        // 错误提示
+        function submit(){
+          const u = api.login({ username: username.value, password: password.value });
+          if (!u){ msg.value = "账号或密码错误"; return; }
+          store.login(u); msg.value = ""; location.hash = "#/"; // 使用hash路由跳转到首页
+        }
+        return { username, password, msg, submit };
+      },
+      template: `
+        <div style="max-width:360px;margin:60px auto">
+          <div class="card">
+            <h2>登录</h2>
+            <div style="display:grid;gap:8px;margin-top:12px">
+              <input class="input" v-model="username" placeholder="账号 admin" />
+              <input class="input" type="password" v-model="password" placeholder="密码 123456" />
+              <button class="btn" @click="submit">登录</button>
+              <div v-if="msg" class="pill warn">{{ msg }}</div>
+            </div>
+          </div>
+        </div>
+      `
+    };
+
+    // ========== 页面：仪表盘 ==========
+    const Dashboard = {
+      name: "Dashboard",
+      setup(){
+        const data = Vue.ref(api.stats()); // 统计数据
+        function refresh(){ data.value = api.stats(); }
+        return { data, refresh };
+      },
+      template: `
+        <div>
+          <div class="space-between">
+            <h2>仪表盘</h2>
+            <button class="btn secondary" @click="refresh">刷新</button>
+          </div>
+          <div class="cards" style="margin-top:12px">
+            <div class="card"><div>用户总数</div><div style="font-size:28px">{{ data.users }}</div></div>
+            <div class="card"><div>产品总数</div><div style="font-size:28px">{{ data.products }}</div></div>
+            <div class="card"><div>在职用户</div><div style="font-size:28px">{{ data.activeUsers }}</div></div>
+            <div class="card"><div>上架产品</div><div style="font-size:28px">{{ data.onSale }}</div></div>
+          </div>
+          <div class="card" style="margin-top:12px">
+            <div class="space-between">
+              <div>估算近30天收入</div>
+              <div style="font-size:28px">¥ {{ data.revenue }}</div>
+            </div>
+          </div>
+        </div>
+      `
+    };
+
+    // ========== 页面：用户管理（CRUD） ==========
+    const Users = {
+      name: "Users",
+      setup(){
+        const list = Vue.ref(api.listUsers());                                   // 用户列表
+        const q = Vue.ref("");                                                   // 搜索关键词
+        const form = Vue.reactive({ name: "", email: "", role: "客服", status: "在职" }); // 添加表单
+        const editing = Vue.ref(null);                                           // 当前编辑项
+        function reload(){ list.value = api.listUsers(); }
+        function add(){
+          if (!form.name || !form.email) return;
+          api.addUser({ name: form.name, email: form.email, role: form.role, status: form.status });
+          form.name=""; form.email=""; form.role="客服"; form.status="在职"; reload();
+        }
+        function del(id){ api.deleteUser(id); reload(); }
+        function edit(u){ editing.value = { ...u }; }
+        function save(){
+          if (!editing.value) return;
+          api.updateUser(editing.value.id, editing.value);
+          editing.value = null; reload();
+        }
+        // 计算属性：根据关键词过滤列表
+        const filtered = Vue.computed(()=>{
+          const s = q.value.trim().toLowerCase();
+          if (!s) return list.value;
+          return list.value.filter(x =>
+            x.name.toLowerCase().includes(s) ||
+            x.email.toLowerCase().includes(s) ||
+            x.role.toLowerCase().includes(s)
+          );
+        });
+        return { list, q, form, editing, filtered, add, del, edit, save };
+      },
+      template: `
+        <div>
+          <div class="space-between">
+            <h2>用户管理</h2>
+            <div class="toolbar"><input class="input" v-model="q" placeholder="搜索姓名/邮箱/角色" /></div>
+          </div>
+          <div class="form">
+            <input v-model="form.name" class="input" placeholder="姓名" />
+            <input v-model="form.email" class="input" placeholder="邮箱" />
+            <select v-model="form.role" class="input"><option>管理员</option><option>运营</option><option>客服</option></select>
+            <select v-model="form.status" class="input"><option>在职</option><option>离职</option></select>
+            <div class="full"><button class="btn" @click="add">添加用户</button></div>
+          </div>
+          <table class="table">
+            <thead><tr><th>ID</th><th>姓名</th><th>邮箱</th><th>角色</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="u in filtered" :key="u.id">
+                <td>{{ u.id }}</td><td>{{ u.name }}</td><td>{{ u.email }}</td>
+                <td><span class="pill gray">{{ u.role }}</span></td>
+                <td><span :class="['pill', u.status==='在职' ? 'green':'gray']">{{ u.status }}</span></td>
+                <td>
+                  <button class="btn secondary" @click="edit(u)">编辑</button>
+                  <button class="btn danger" style="margin-left:6px" @click="del(u.id)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-if="editing" class="card" style="margin-top:12px">
+            <h3>编辑用户</h3>
+            <div class="form">
+              <input v-model="editing.name" class="input" />
+              <input v-model="editing.email" class="input" />
+              <select v-model="editing.role" class="input"><option>管理员</option><option>运营</option><option>客服</option></select>
+              <select v-model="editing.status" class="input"><option>在职</option><option>离职</option></select>
+              <div class="full">
+                <button class="btn success" @click="save">保存</button>
+                <button class="btn secondary" style="margin-left:6px" @click="editing=null">取消</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    };
+
+    // ========== 页面：产品管理（CRUD） ==========
+    const Products = {
+      name: "Products",
+      setup(){
+        const list = Vue.ref(api.listProducts());                       // 产品列表
+        const q = Vue.ref("");                                          // 搜索关键词
+        const form = Vue.reactive({ name: "", price: 0, stock: 0, status: "上架" }); // 添加表单
+        const editing = Vue.ref(null);                                  // 当前编辑项
+        function reload(){ list.value = api.listProducts(); }
+        function add(){
+          if (!form.name) return;
+          api.addProduct({ name: form.name, price: Number(form.price), stock: Number(form.stock), status: form.status });
+          form.name=""; form.price=0; form.stock=0; form.status="上架"; reload();
+        }
+        function del(id){ api.deleteProduct(id); reload(); }
+        function edit(p){ editing.value = { ...p }; }
+        function save(){
+          if (!editing.value) return;
+          api.updateProduct(editing.value.id, { ...editing.value, price: Number(editing.value.price), stock: Number(editing.value.stock) });
+          editing.value = null; reload();
+        }
+        const filtered = Vue.computed(()=>{
+          const s = q.value.trim().toLowerCase();
+          if (!s) return list.value;
+          return list.value.filter(x =>
+            x.name.toLowerCase().includes(s) ||
+            String(x.id).includes(s) ||
+            x.status.toLowerCase().includes(s)
+          );
+        });
+        return { list, q, form, editing, filtered, add, del, edit, save };
+      },
+      template: `
+        <div>
+          <div class="space-between">
+            <h2>产品管理</h2>
+            <div class="toolbar"><input class="input" v-model="q" placeholder="搜索名称/ID/状态" /></div>
+          </div>
+          <div class="form">
+            <input v-model="form.name" class="input" placeholder="产品名称" />
+            <input v-model="form.price" type="number" class="input" placeholder="价格" />
+            <input v-model="form.stock" type="number" class="input" placeholder="库存" />
+            <select v-model="form.status" class="input"><option>上架</option><option>下架</option></select>
+            <div class="full"><button class="btn" @click="add">添加产品</button></div>
+          </div>
+          <table class="table">
+            <thead><tr><th>ID</th><th>名称</th><th>价格</th><th>库存</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody>
+              <tr v-for="p in filtered" :key="p.id">
+                <td>{{ p.id }}</td><td>{{ p.name }}</td><td>¥ {{ p.price }}</td><td>{{ p.stock }}</td>
+                <td><span class="pill gray">{{ p.status }}</span></td>
+                <td>
+                  <button class="btn secondary" @click="edit(p)">编辑</button>
+                  <button class="btn danger" style="margin-left:6px" @click="del(p.id)">删除</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-if="editing" class="card" style="margin-top:12px">
+            <h3>编辑产品</h3>
+            <div class="form">
+              <input v-model="editing.name" class="input" />
+              <input v-model="editing.price" type="number" class="input" />
+              <input v-model="editing.stock" type="number" class="input" />
+              <select v-model="editing.status" class="input"><option>上架</option><option>下架</option></select>
+              <div class="full">
+                <button class="btn success" @click="save">保存</button>
+                <button class="btn secondary" style="margin-left:6px" @click="editing=null">取消</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+    };
+
+    // ========== 页面：系统设置 ==========
+    const Settings = {
+      name: "Settings",
+      setup(){
+        const info = Vue.ref(api.stats()); // 基本统计
+        function reset(){ localStorage.clear(); location.reload(); } // 重置示例数据并刷新
+        return { info, reset };
+      },
+      template: `
+        <div>
+          <h2>系统设置</h2>
+          <div class="card" style="margin-top:12px">
+            <div>数据统计</div>
+            <div style="margin-top:8px">用户：{{ info.users }}，产品：{{ info.products }}</div>
+          </div>
+          <div class="card" style="margin-top:12px">
+            <div class="space-between">
+              <div>重置示例数据</div>
+              <button class="btn danger" @click="reset">重置</button>
+            </div>
+          </div>
+        </div>
+      `
+    };
+
+    // ========== 路由：定义各页面路径与访问守卫 ==========
+    const routes = [
+      { path: "/login", component: Login },
+      { path: "/", component: Dashboard, meta: { requiresAuth: true } },
+      { path: "/users", component: Users, meta: { requiresAuth: true } },
+      { path: "/products", component: Products, meta: { requiresAuth: true } },
+      { path: "/settings", component: Settings, meta: { requiresAuth: true } },
+    ];
+    const router = VueRouter.createRouter({
+      history: VueRouter.createWebHashHistory(), // 使用 hash 路由，避免静态文件环境下刷新404
+      routes,
+    });
+    router.beforeEach((to)=>{
+      // 简单路由守卫：未登录时访问受保护页面跳转登录
+      if (to.meta && to.meta.requiresAuth && !store.currentUser.value) return "/login";
+      // 已登录时访问登录页跳转首页
+      if (to.path === "/login" && store.currentUser.value) return "/";
+    });
+
+    // ========== 应用根组件：布局与占位 ==========
+    const App = {
+      name: "App",
+      components: { Sidebar, Topbar },
+      setup(){ return { store }; },
+      template: `
+        <div class="layout">
+          <aside class="sidebar">
+            <div class="brand"><span>管理系统</span></div>
+            <Sidebar />
+          </aside>
+          <header class="topbar"><Topbar /></header>
+          <main class="content">
+            <!-- 路由占位，渲染当前页面 -->
+            <router-view />
+            <div class="footer">示例项目 · 适合初学者 · Vue3</div>
+          </main>
+        </div>
+      `
+    };
+
+    // ========== 创建并挂载应用 ==========
+    const app = Vue.createApp(App);
+    app.use(router);
+    app.mount("#app");
+  </script>
+</body>
+</html>
